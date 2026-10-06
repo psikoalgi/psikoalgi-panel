@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="tr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>psikoalgi · Analiz Paneli</title>
+<style>
+:root{--bg:#f6f5fb;--card:#fff;--fg:#17151f;--mut:#6b6880;--line:#e8e6f1;--a:#7c3aed;--b:#ec4899;--ok:#10b981;--warn:#f59e0b;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f0e17;--card:#191825;--fg:#f3f2fa;--mut:#9a97b0;--line:#2a2840}}
+:root[data-theme="dark"]{--bg:#0f0e17;--card:#191825;--fg:#f3f2fa;--mut:#9a97b0;--line:#2a2840}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.45}
+.wrap{max-width:1080px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:20px}
+.brand{display:flex;gap:12px;align-items:center}
+.av{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--b));display:grid;place-items:center;color:#fff;font-weight:700;font-size:20px}
+h1{font-size:20px;margin:0}.sub{color:var(--mut);font-size:13px}
+.tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.chip{font-size:12px;padding:5px 10px;border-radius:99px;background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn);font-weight:600}
+.chip.demo{background:color-mix(in srgb,var(--a) 18%,transparent);color:var(--a)}
+button{font:inherit;font-size:13px;font-weight:600;border:0;border-radius:10px;padding:8px 14px;cursor:pointer;color:#fff;background:linear-gradient(135deg,var(--a),var(--b))}
+.grid{display:grid;gap:14px}
+.kpis{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+.k .l{font-size:12px;color:var(--mut)}.k .v{font-size:26px;font-weight:700;margin-top:2px}.k .d{font-size:12px;color:var(--ok);margin-top:2px}
+.two{grid-template-columns:repeat(auto-fit,minmax(300px,1fr));margin-bottom:14px}
+h2{font-size:15px;margin:0 0 4px}.note{font-size:12px;color:var(--mut);margin:0 0 12px}
+.empty{display:grid;place-items:center;text-align:center;color:var(--mut);font-size:13px;min-height:150px;border:1px dashed var(--line);border-radius:12px;padding:12px}
+svg{width:100%;height:auto;display:block}
+.hours{display:flex;align-items:flex-end;gap:3px;height:150px}
+.hours div{flex:1;border-radius:4px 4px 0 0;background:color-mix(in srgb,var(--a) 35%,transparent);min-height:2px}
+.hours div.best{background:linear-gradient(var(--b),var(--a))}
+.ax{display:flex;justify-content:space-between;font-size:11px;color:var(--mut);margin-top:6px}
+.ins{display:grid;gap:8px;margin-top:12px;font-size:13px}
+.ins span{color:var(--mut)}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:640px}
+th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut)}
+.bar{display:inline-block;width:70px;height:6px;border-radius:9px;background:var(--line);vertical-align:middle;margin-right:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--a),var(--b))}
+.foot{font-size:12px;color:var(--mut);margin-top:16px}
+</style></head><body><div class="wrap">
+<header>
+ <div class="brand"><div class="av">p</div><div><h1>@psikoalgi</h1><div class="sub">Instagram analiz paneli · günde 3 video takibi</div></div></div>
+ <div class="tools"><span class="chip" id="chip">Veri bekleniyor</span><button id="tg">Örnek veriyi göster</button></div>
+</header>
+<section class="grid kpis" id="kpis"></section>
+<section class="grid two">
+ <div class="card"><h2>Takipçi büyümesi</h2><p class="note">Günlük toplam takipçi</p><div id="growth"></div></div>
+ <div class="card"><h2>Saate göre performans</h2><p class="note">Videonun yüklendiği saate göre ortalama izlenme</p><div id="hours"></div><div class="ins" id="ins"></div></div>
+</section>
+<section class="card"><h2>Video performansı</h2><p class="note">Son videolar · izlenme, etkileşim ve videonun izleyiciyi nasıl tuttuğu</p><div class="tw" id="tbl"></div></section>
+<section class="card" style="margin-top:14px"><h2>İlk saatlerde seyir</h2><p class="note">Son 3 videonun yüklendikten sonraki saatlere göre toplam izlenmesi</p><div id="vel"></div></section>
+<p class="foot" id="foot"></p>
+</div>
+<script>
+// Gerçek veri data.json dosyasından gelir (GitHub Actions yarım saatte bir yeniler).
+let REAL={followers:[],videos:[],updated:null};
+// videos: {t:ISO, views, likes, comments, saves, shares, avgWatch(sn), len(sn), ret(%)}
+let demoOn=false;
+const $=id=>document.getElementById(id),nf=n=>Math.round(n).toLocaleString('tr-TR');
+function demo(){let s=11;const r=()=>(s=(s*16807)%2147483647)/2147483647;const v=[],f=[];let fol=0;
+ for(let d=13;d>=0;d--){const day=new Date();day.setHours(0,0,0,0);day.setDate(day.getDate()-d);let gain=0;
+  [[8,10],[12,15],[19,22]].forEach(([a,b])=>{const h=a+Math.floor(r()*(b-a+1)),t=new Date(day);t.setHours(h,Math.floor(r()*60));
+   const peak=h>=19?1.6:h>=12?1:.7,views=Math.round((250+r()*1400)*peak*(1+(13-d)*.07)),len=15+Math.floor(r()*30);
+   v.push({t:t.toISOString(),views,likes:Math.round(views*(.04+r()*.07)),comments:Math.round(views*(.002+r()*.006)),saves:Math.round(views*(.005+r()*.02)),shares:Math.round(views*(.003+r()*.01)),len,avgWatch:len*(.35+r()*.4),ret:Math.round(30+r()*45)});
+   gain+=Math.round(views*(.004+r()*.012));});
+  fol+=gain;f.push({d:day.toISOString(),n:fol});}
+ return{followers:f,videos:v};}
+function render(){const D=demoOn?demo():REAL,V=D.videos,F=D.followers,has=V.length>0;
+ $('chip').textContent=demoOn?'Örnek veri':(REAL.updated?'Canlı veri':'Veri bekleniyor');$('chip').className='chip'+(demoOn?' demo':'');
+ $('tg').textContent=demoOn?'Gerçek görünüme dön':'Örnek veriyi göster';
+ const sum=k=>V.reduce((a,x)=>a+x[k],0),views=sum('views'),inter=sum('likes')+sum('comments')+sum('saves')+sum('shares');
+ const fol=F.length?F[F.length-1].n:0,gain=F.length>1?fol-F[Math.max(0,F.length-8)].n:0;
+ const k=[['Takipçi',nf(fol),has?'+'+nf(gain)+' son 7 gün':'—'],['Toplam izlenme',nf(views),has?'ort. '+nf(views/V.length)+' / video':'—'],['Beğeni',nf(sum('likes')),''],['Yorum',nf(sum('comments')),''],['Kaydetme',nf(sum('saves')),''],['Etkileşim oranı',views?(inter/views*100).toFixed(1)+'%':'0%','']];
+ $('kpis').innerHTML=k.map(([l,v,d])=>`<div class="card k"><div class="l">${l}</div><div class="v">${v}</div><div class="d">${d}</div></div>`).join('');
+ // büyüme grafiği
+ if(F.length>1){const W=600,H=190,p=14,mx=Math.max(...F.map(x=>x.n))||1,pts=F.map((x,i)=>[p+i*(W-2*p)/(F.length-1),H-p-(x.n/mx)*(H-2*p)]);
+  const ln=pts.map((q,i)=>(i?'L':'M')+q[0].toFixed(1)+' '+q[1].toFixed(1)).join(' ');
+  $('growth').innerHTML=`<svg viewBox="0 0 ${W} ${H}"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--a)" stop-opacity=".35"/><stop offset="1" stop-color="var(--a)" stop-opacity="0"/></linearGradient></defs><path d="${ln} L${pts[pts.length-1][0]} ${H-p} L${p} ${H-p}Z" fill="url(#g)"/><path d="${ln}" fill="none" stroke="var(--a)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg><div class="ax"><span>${new Date(F[0].d).toLocaleDateString('tr-TR',{day:'numeric',month:'short'})}</span><span>${nf(fol)} takipçi</span><span>${new Date(F[F.length-1].d).toLocaleDateString('tr-TR',{day:'numeric',month:'short'})}</span></div>`;
+ }else $('growth').innerHTML='<div class="empty">Henüz veri yok.<br>İlk videon yayınlandığında büyüme grafiği burada oluşacak.</div>';
+ // saat analizi
+ if(has){const b=Array.from({length:24},()=>[0,0]);V.forEach(x=>{const h=new Date(x.t).getHours();b[h][0]+=x.views;b[h][1]++;});
+  const avg=b.map(([s,c])=>c?s/c:0),mx=Math.max(...avg)||1,top=avg.map((a,h)=>[a,h]).filter(x=>x[0]).sort((x,y)=>y[0]-x[0]).slice(0,3);
+  $('hours').innerHTML='<div class="hours">'+avg.map((a,h)=>`<div class="${top[0]&&top[0][1]===h?'best':''}" style="height:${Math.max(a/mx*100,1.5)}%" title="${String(h).padStart(2,'0')}:00 · ${nf(a)} izlenme"></div>`).join('')+'</div><div class="ax"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>';
+  const best=[...V].sort((x,y)=>y.views-x.views)[0];
+  $('ins').innerHTML=`<div><span>En iyi saatler:</span> <b>${top.map(x=>String(x[1]).padStart(2,'0')+':00').join(' · ')}</b></div><div><span>En iyi video:</span> <b>${nf(best.views)} izlenme</b>, ${new Date(best.t).toLocaleString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div><div><span>Ortalama izlenme süresi:</span> <b>${(V.reduce((a,x)=>a+x.avgWatch,0)/V.length).toFixed(1)} sn</b></div>`;
+ }else{$('hours').innerHTML='<div class="empty">Henüz veri yok.<br>Hangi saatte yüklediğin videoların daha iyi tuttuğu burada görünecek.</div>';$('ins').innerHTML='';}
+ // tablo
+ if(has){const rows=[...V].sort((a,b)=>new Date(b.t)-new Date(a.t)).slice(0,12);
+  $('tbl').innerHTML='<table><thead><tr><th>Yüklenme</th><th>İzlenme</th><th>Beğeni</th><th>Yorum</th><th>Kayıt</th><th>Paylaşım</th><th>Ort. izlenme süresi</th></tr></thead><tbody>'+rows.map(x=>`<tr><td>${new Date(x.t).toLocaleString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</td><td><b>${nf(x.views)}</b></td><td>${nf(x.likes)}</td><td>${nf(x.comments)}</td><td>${nf(x.saves)}</td><td>${nf(x.shares)}</td><td><span class="bar"><i style="width:${Math.min(100,x.avgWatch/(Math.max(...rows.map(r=>r.avgWatch))||1)*100)}%"></i></span>${x.avgWatch.toFixed(1)} sn</td></tr>`).join('')+'</tbody></table>';
+ }else $('tbl').innerHTML='<div class="empty">Henüz video verisi yok.<br>Günde 3 video yüklediğinde her biri için izlenme, beğeni ve izleyici tutma oranı burada listelenecek.</div>';
+ const wS=[...V].filter(x=>x.snaps&&x.snaps.length>1).sort((a,b)=>new Date(b.t)-new Date(a.t)).slice(0,3);
+ if(wS.length){const W=600,H=170,p=14,xm=Math.max(...wS.flatMap(x=>x.snaps.map(q=>q[0])))||1,ym=Math.max(...wS.flatMap(x=>x.snaps.map(q=>q[1])))||1,cl=['var(--a)','var(--b)','var(--ok)'];
+  $('vel').innerHTML=`<svg viewBox="0 0 ${W} ${H}">`+wS.map((x,i)=>`<path d="${x.snaps.map((q,j)=>(j?'L':'M')+(p+q[0]/xm*(W-2*p)).toFixed(1)+' '+(H-p-q[1]/ym*(H-2*p)).toFixed(1)).join(' ')}" fill="none" stroke="${cl[i]}" stroke-width="3" stroke-linecap="round"/>`).join('')+`</svg><div class="ax">`+wS.map((x,i)=>`<span style="color:${cl[i]}">● ${new Date(x.t).toLocaleString('tr-TR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</span>`).join('')+`<span>${xm.toFixed(0)}. saate kadar</span></div>`;
+ }else $('vel').innerHTML='<div class="empty">Videolar yüklendikçe ilk saatlerdeki izlenme seyri burada çizilecek.</div>';
+ $('foot').textContent=demoOn?'Gösterilen rakamlar tasarımı görmen için üretilmiş örnek veridir, hesabının gerçek verisi değildir.':(REAL.updated?'Son güncelleme: '+new Date(REAL.updated).toLocaleString('tr-TR')+' · veriler yarım saatte bir yenilenir.':'Henüz veri gelmedi; ilk otomatik güncelleme sonrası burası dolacak.');
+}
+$('tg').onclick=()=>{demoOn=!demoOn;render();};
+const load=()=>fetch('data.json?'+Date.now()).then(r=>r.ok?r.json():null).then(d=>{if(d&&d.updated){REAL=d;render();}}).catch(()=>{});
+load();setInterval(load,300000);
+render();
+</script></body></html>
